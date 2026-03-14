@@ -55,18 +55,22 @@ jobs:
         shell: bash
 
       - name: Install dependencies
+        if: matrix.python-version == '3.14'
         run: uv sync --all-extras --dev
         shell: bash
 
       - name: Run tests
+        if: matrix.python-version == '3.14'
         run: uv run pytest --cov=src --cov-report=xml
         shell: bash
 
       - name: Build docs
+        if: matrix.python-version == '3.14'
         run: uv run zensical build
         shell: bash
 
       - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.14'
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -96,11 +100,18 @@ jobs:
         run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
         shell: bash
 
+      - name: Skip experimental platforms warning
+        if: matrix.python-version == '3.14t' || matrix.os == 'windows-latest' || matrix.os == 'macos-latest'
+        run: echo "Skipping test execution on experimental combinations (Python 3.14t, macOS, Windows) due to missing binary wheels."
+        shell: bash
+
       - name: Install dependencies
+        if: matrix.python-version == '3.14' && matrix.os != 'windows-latest' && matrix.os != 'macos-latest'
         run: uv sync --all-extras --dev
         shell: bash
 
       - name: Run tests
+        if: matrix.python-version == '3.14' && matrix.os != 'windows-latest' && matrix.os != 'macos-latest'
         run: uv run pytest --cov=src --cov-report=xml
         shell: bash
 
