@@ -37,3 +37,34 @@ def hpo_graph_json() -> Generator[Any]:
             edge["ingestion_ts"] = ingestion_ts
             edge["source_file"] = source_file
             yield dlt.mark.with_table_name(edge, "bronze_hpo_edges")
+
+
+@dlt.resource(name="hpo_annotations", write_disposition="replace")  # type: ignore[misc]
+def hpo_annotations() -> Generator[Any]:
+    """
+    Ingests the secondary HPO annotations source (phenotype.hpoa).
+    Yields data into `bronze_hpo_annotations` table.
+    """
+    import csv
+
+    url = "http://purl.obolibrary.org/obo/hp/hpoa/phenotype.hpoa"
+    response = client.get(url, stream=True)
+    response.raise_for_status()
+
+    def _filter_comments(it: Generator[bytes]) -> Generator[str]:
+        for line in it:
+            if line:
+                decoded_line = line.decode("utf-8")
+                if not decoded_line.startswith("#"):
+                    yield decoded_line
+
+    filtered_lines = _filter_comments(response.iter_lines())
+    reader = csv.DictReader(filtered_lines, delimiter="\t")
+
+    ingestion_ts = datetime.datetime.now(datetime.UTC).isoformat()
+    source_file = "phenotype.hpoa"
+
+    for row in reader:
+        row["ingestion_ts"] = ingestion_ts
+        row["source_file"] = source_file
+        yield dlt.mark.with_table_name(row, "bronze_hpo_annotations")
