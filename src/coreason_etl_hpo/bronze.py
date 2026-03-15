@@ -60,19 +60,25 @@ def hpo_graph_json() -> Generator[Any]:
 
     # Ingest nodes
     if "nodes" in graph:
+        nodes_list = []
         for node in graph["nodes"]:
             HPONodeContract.model_validate(node)
             node["ingestion_ts"] = ingestion_ts
             node["source_file"] = source_file
-            yield dlt.mark.with_table_name(node, "bronze_hpo_nodes")
+            nodes_list.append(node)
+        if nodes_list:
+            yield dlt.mark.with_table_name(nodes_list, "bronze_hpo_nodes")
 
     # Ingest edges
     if "edges" in graph:
+        edges_list = []
         for edge in graph["edges"]:
             HPOEdgeContract.model_validate(edge)
             edge["ingestion_ts"] = ingestion_ts
             edge["source_file"] = source_file
-            yield dlt.mark.with_table_name(edge, "bronze_hpo_edges")
+            edges_list.append(edge)
+        if edges_list:
+            yield dlt.mark.with_table_name(edges_list, "bronze_hpo_edges")
 
 
 @dlt.resource(name="hpo_annotations", write_disposition="replace")  # type: ignore[misc]
@@ -100,7 +106,11 @@ def hpo_annotations() -> Generator[Any]:
     ingestion_ts = datetime.datetime.now(datetime.UTC).isoformat()
     source_file = "phenotype.hpoa"
 
+    annotations_list = []
     for row in reader:
         row["ingestion_ts"] = ingestion_ts
         row["source_file"] = source_file
-        yield dlt.mark.with_table_name(row, "bronze_hpo_annotations")
+        annotations_list.append(row)
+
+    if annotations_list:
+        yield dlt.mark.with_table_name(annotations_list, "bronze_hpo_annotations")
