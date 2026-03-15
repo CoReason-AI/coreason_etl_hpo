@@ -25,13 +25,12 @@ def test_hpo_graph_json_success() -> None:
 
         assert len(items) == 2
 
-        node_yield = items[0]
-        assert node_yield["id"] == "HP:0000001"
-        assert "ingestion_ts" in node_yield
+        # dlt.mark.with_table_name modifies the object. dlt unwraps lists when iterating over resources.
+        assert items[0]["id"] == "HP:0000001"
+        assert "ingestion_ts" in items[0]
 
-        edge_yield = items[1]
-        assert edge_yield["sub"] == "HP:0000002"
-        assert "ingestion_ts" in edge_yield
+        assert items[1]["sub"] == "HP:0000002"
+        assert "ingestion_ts" in items[1]
 
 
 def test_hpo_graph_json_invalid_node_schema() -> None:
@@ -112,7 +111,6 @@ def test_hpo_annotations_success() -> None:
         items = list(hpo_annotations())
 
         assert len(items) == 1
-        annotation_yield = items[0]
-        assert annotation_yield["database_id"] == "OMIM:101600"
-        assert annotation_yield["hpo_id"] == "HP:0000001"
-        assert "ingestion_ts" in annotation_yield
+        assert items[0]["database_id"] == "OMIM:101600"
+        assert items[0]["hpo_id"] == "HP:0000001"
+        assert "ingestion_ts" in items[0]
