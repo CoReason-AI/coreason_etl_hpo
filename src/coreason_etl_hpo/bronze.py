@@ -3,6 +3,7 @@ from collections.abc import Generator
 from typing import Any
 
 import dlt
+import ijson
 from dlt.sources.helpers.requests import client
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -47,38 +48,64 @@ def hpo_graph_json() -> Generator[Any]:
     Yields data into `bronze_hpo_nodes` and `bronze_hpo_edges` tables.
     """
     url = "http://purl.obolibrary.org/obo/hp.json"
-    response = client.get(url)
+    response = client.get(url, stream=True)
     response.raise_for_status()
-    data = response.json()
 
-    if "graphs" not in data or not isinstance(data["graphs"], list) or len(data["graphs"]) == 0:
-        raise ValueError("Invalid HPO JSON structure: Missing or empty 'graphs' array.")
-
-    graph = data["graphs"][0]
     ingestion_ts = datetime.datetime.now(datetime.UTC).isoformat()
     source_file = "hp.json"
 
-    # Ingest nodes
-    if "nodes" in graph:
-        nodes_list = []
-        for node in graph["nodes"]:
-            HPONodeContract.model_validate(node)
-            node["ingestion_ts"] = ingestion_ts
-            node["source_file"] = source_file
-            nodes_list.append(node)
-        if nodes_list:
-            yield dlt.mark.with_table_name(nodes_list, "bronze_hpo_nodes")
+    found_graphs = False
 
-    # Ingest edges
-    if "edges" in graph:
-        edges_list = []
-        for edge in graph["edges"]:
-            HPOEdgeContract.model_validate(edge)
-            edge["ingestion_ts"] = ingestion_ts
-            edge["source_file"] = source_file
-            edges_list.append(edge)
-        if edges_list:
-            yield dlt.mark.with_table_name(edges_list, "bronze_hpo_edges")
+    nodes_batch = []
+    edges_batch = []
+    batch_size = 1000
+
+    parser = ijson.parse(response.raw)
+
+    for prefix, event, value in parser:
+        if prefix == "graphs" and event == "start_array":
+            found_graphs = True
+
+        elif prefix == "graphs.item.nodes.item" and event == "start_map":
+            builder = ijson.ObjectBuilder()
+            builder.event(event, value)
+            for p, e, v in parser:
+                builder.event(e, v)
+                if p == "graphs.item.nodes.item" and e == "end_map":
+                    node = builder.value
+                    HPONodeContract.model_validate(node)
+                    node["ingestion_ts"] = ingestion_ts
+                    node["source_file"] = source_file
+                    nodes_batch.append(node)
+                    if len(nodes_batch) >= batch_size:
+                        yield dlt.mark.with_table_name(nodes_batch, "bronze_hpo_nodes")
+                        nodes_batch = []
+                    break
+
+        elif prefix == "graphs.item.edges.item" and event == "start_map":
+            builder = ijson.ObjectBuilder()
+            builder.event(event, value)
+            for p, e, v in parser:
+                builder.event(e, v)
+                if p == "graphs.item.edges.item" and e == "end_map":
+                    edge = builder.value
+                    HPOEdgeContract.model_validate(edge)
+                    edge["ingestion_ts"] = ingestion_ts
+                    edge["source_file"] = source_file
+                    edges_batch.append(edge)
+                    if len(edges_batch) >= batch_size:
+                        yield dlt.mark.with_table_name(edges_batch, "bronze_hpo_edges")
+                        edges_batch = []
+                    break
+
+    if nodes_batch:
+        yield dlt.mark.with_table_name(nodes_batch, "bronze_hpo_nodes")
+
+    if edges_batch:
+        yield dlt.mark.with_table_name(edges_batch, "bronze_hpo_edges")
+
+    if not found_graphs:
+        raise ValueError("Invalid HPO JSON structure: Missing or empty 'graphs' array.")
 
 
 @dlt.resource(name="hpo_annotations", write_disposition="replace")  # type: ignore[misc]

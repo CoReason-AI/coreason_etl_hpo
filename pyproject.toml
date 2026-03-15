@@ -13,6 +13,7 @@ authors = [
 ]
 dependencies = [
     "dlt>=1.23.0",
+    "ijson>=3.5.0",
     "loguru>=0.7.2",
     "polars>=1.39.0",
     "pyarrow>=23.0.1",
