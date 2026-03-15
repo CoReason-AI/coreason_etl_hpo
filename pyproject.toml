@@ -18,6 +18,7 @@ dependencies = [
     "pyarrow>=23.0.1",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.13.1",
+    "requests>=2.32.5",
 ]
 license = { file = "LICENSE" }
 classifiers = [
@@ -65,7 +66,7 @@ select = ["E", "F", "B", "I", "UP", "SIM", "RUF", "ARG", "C4", "PT", "TCH", "FA"
 ignore = ["S101", "TC001", "TC002", "TC003", "UP037"]
 
 [tool.deptry.per_rule_ignores]
-DEP002 = ["dlt", "pyarrow", "pydantic"]
+DEP002 = ["dlt", "pyarrow", "pydantic", "requests"]
 
 [tool.mypy]
 python_version = "3.14"
