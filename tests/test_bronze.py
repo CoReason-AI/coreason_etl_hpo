@@ -65,7 +65,7 @@ def test_hpo_graph_json_invalid_node_schema() -> None:
         with pytest.raises((ResourceExtractionError, ValidationError)) as exc_info:
             list(hpo_graph_json())
         assert "validation error" in str(exc_info.value).lower()
-        assert "HPONodeContract" in str(exc_info.value)
+        assert "HPONode" in str(exc_info.value)
 
 
 def test_hpo_graph_json_invalid_edge_schema() -> None:
@@ -93,7 +93,7 @@ def test_hpo_graph_json_invalid_edge_schema() -> None:
         with pytest.raises((ResourceExtractionError, ValidationError)) as exc_info:
             list(hpo_graph_json())
         assert "validation error" in str(exc_info.value).lower()
-        assert "HPOEdgeContract" in str(exc_info.value)
+        assert "HPOEdge" in str(exc_info.value)
 
 
 def test_hpo_graph_json_missing_graphs() -> None:
