@@ -41,9 +41,11 @@ def run_pipeline() -> None:
     logger.info("Starting Silver & Gold transformations via Polars...")
 
     # Read Bronze tables
-    bronze_nodes = pl.read_database_uri("SELECT * FROM hpo_bronze.bronze_hpo_nodes", config.postgres_uri)
-    bronze_edges = pl.read_database_uri("SELECT * FROM hpo_bronze.bronze_hpo_edges", config.postgres_uri)
-    bronze_annotations = pl.read_database_uri("SELECT * FROM hpo_bronze.bronze_hpo_annotations", config.postgres_uri)
+    bronze_nodes = pl.read_database("SELECT * FROM hpo_bronze.bronze_hpo_nodes", connection=config.postgres_uri)
+    bronze_edges = pl.read_database("SELECT * FROM hpo_bronze.bronze_hpo_edges", connection=config.postgres_uri)
+    bronze_annotations = pl.read_database(
+        "SELECT * FROM hpo_bronze.bronze_hpo_annotations", connection=config.postgres_uri
+    )
 
     # Silver transformations
     silver_nodes = transform_silver_nodes(bronze_nodes)
