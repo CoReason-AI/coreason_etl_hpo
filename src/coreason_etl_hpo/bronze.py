@@ -3,7 +3,7 @@ from collections.abc import Generator
 from typing import Any
 
 import dlt
-import ijson
+import ijson  # type: ignore[import-untyped]
 from dlt.sources.helpers.requests import client
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -41,7 +41,7 @@ class HPOEdge(BaseModel):
     obj: str = Field(description="Object node ID.")
 
 
-@dlt.resource(name="hpo_graph_json", write_disposition="replace")  # type: ignore[misc]
+@dlt.resource(name="hpo_graph_json", write_disposition="replace")
 def hpo_graph_json() -> Generator[Any]:
     """
     Ingests the primary HPO JSON source containing ontology graph nodes and edges.
@@ -108,7 +108,7 @@ def hpo_graph_json() -> Generator[Any]:
         raise ValueError("Invalid HPO JSON structure: Missing or empty 'graphs' array.")
 
 
-@dlt.resource(name="hpo_annotations", write_disposition="replace")  # type: ignore[misc]
+@dlt.resource(name="hpo_annotations", write_disposition="replace")
 def hpo_annotations() -> Generator[Any]:
     """
     Ingests the secondary HPO annotations source (phenotype.hpoa).

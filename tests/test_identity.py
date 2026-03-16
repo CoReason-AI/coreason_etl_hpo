@@ -29,7 +29,7 @@ def test_generate_coreason_id_null() -> None:
     assert res_df["coreason_id"][1] is None
 
 
-@given(st.lists(st.text(), min_size=1, max_size=100))  # type: ignore[misc]
+@given(st.lists(st.text(), min_size=1, max_size=100))
 def test_hypothesis_generate_coreason_id(input_strings: list[str]) -> None:
     df = pl.DataFrame({"source_id": input_strings})
     res_df = df.with_columns(generate_coreason_id(pl.col("source_id")).alias("coreason_id"))
