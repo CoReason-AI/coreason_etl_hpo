@@ -8,31 +8,31 @@ from dlt.sources.helpers.requests import client
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class HPONodeMetaDefinitionContract(BaseModel):
+class HPONodeMetaDefinition(BaseModel):
     """Data contract for the meta definition of an HPO node."""
 
     model_config = ConfigDict(extra="ignore")
     val: str = Field(description="Description of the phenotype.")
 
 
-class HPONodeMetaContract(BaseModel):
+class HPONodeMeta(BaseModel):
     """Data contract for the meta data of an HPO node."""
 
     model_config = ConfigDict(extra="ignore")
-    definition: HPONodeMetaDefinitionContract | None = Field(None, description="Definition of the node.")
+    definition: HPONodeMetaDefinition | None = Field(None, description="Definition of the node.")
     deprecated: bool | None = Field(None, description="True if the node is deprecated.")
 
 
-class HPONodeContract(BaseModel):
+class HPONode(BaseModel):
     """Data contract for an HPO node."""
 
     model_config = ConfigDict(extra="ignore")
     id: str = Field(description="The HP Identifier (e.g., HP:0002240).")
     lbl: str | None = Field(None, description="Primary human-readable name.")
-    meta: HPONodeMetaContract | None = Field(None, description="Metadata for the node.")
+    meta: HPONodeMeta | None = Field(None, description="Metadata for the node.")
 
 
-class HPOEdgeContract(BaseModel):
+class HPOEdge(BaseModel):
     """Data contract for an HPO edge."""
 
     model_config = ConfigDict(extra="ignore")
@@ -73,7 +73,7 @@ def hpo_graph_json() -> Generator[Any]:
                 builder.event(e, v)
                 if p == "graphs.item.nodes.item" and e == "end_map":
                     node = builder.value
-                    HPONodeContract.model_validate(node)
+                    HPONode.model_validate(node)
                     node["ingestion_ts"] = ingestion_ts
                     node["source_file"] = source_file
                     nodes_batch.append(node)
@@ -89,7 +89,7 @@ def hpo_graph_json() -> Generator[Any]:
                 builder.event(e, v)
                 if p == "graphs.item.edges.item" and e == "end_map":
                     edge = builder.value
-                    HPOEdgeContract.model_validate(edge)
+                    HPOEdge.model_validate(edge)
                     edge["ingestion_ts"] = ingestion_ts
                     edge["source_file"] = source_file
                     edges_batch.append(edge)
