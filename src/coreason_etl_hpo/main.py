@@ -41,10 +41,14 @@ def run_pipeline() -> None:
     logger.info("Starting Silver & Gold transformations via Polars...")
 
     # Read Bronze tables
-    bronze_nodes = pl.read_database("SELECT * FROM hpo_bronze.bronze_hpo_nodes", connection=config.postgres_uri)
-    bronze_edges = pl.read_database("SELECT * FROM hpo_bronze.bronze_hpo_edges", connection=config.postgres_uri)
-    bronze_annotations = pl.read_database(
-        "SELECT * FROM hpo_bronze.bronze_hpo_annotations", connection=config.postgres_uri
+    bronze_nodes = pl.read_database_uri(
+        "SELECT * FROM hpo_bronze.bronze_hpo_nodes", uri=config.postgres_uri, engine="adbc"
+    )
+    bronze_edges = pl.read_database_uri(
+        "SELECT * FROM hpo_bronze.bronze_hpo_edges", uri=config.postgres_uri, engine="adbc"
+    )
+    bronze_annotations = pl.read_database_uri(
+        "SELECT * FROM hpo_bronze.bronze_hpo_annotations", uri=config.postgres_uri, engine="adbc"
     )
 
     # Silver transformations
@@ -64,12 +68,14 @@ def run_pipeline() -> None:
     # For a robust setup, it is recommended to write to a target schema using `adbc`
     # Here, writing via `write_database`
 
-    dim_concept.write_database("hpo_gold.dim_hpo_concept", connection=config.postgres_uri, if_table_exists="replace")
+    dim_concept.write_database(
+        "hpo_gold.dim_hpo_concept", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
+    )
     fact_relationship.write_database(
-        "hpo_gold.fact_hpo_relationship", connection=config.postgres_uri, if_table_exists="replace"
+        "hpo_gold.fact_hpo_relationship", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
     )
     bridge_annotation.write_database(
-        "hpo_gold.bridge_disease_annotation", connection=config.postgres_uri, if_table_exists="replace"
+        "hpo_gold.bridge_disease_annotation", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
     )
 
     logger.info("Pipeline execution completed successfully.")
