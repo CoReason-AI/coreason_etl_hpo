@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class PipelineConfig(BaseSettings):  # type: ignore[misc]
+class PipelineConfig(BaseSettings):
     """
     Configuration model for the pipeline.
     """
