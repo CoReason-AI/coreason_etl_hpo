@@ -78,7 +78,9 @@ def hpo_graph_json() -> Generator[Any]:
                     node["source_file"] = source_file
                     nodes_batch.append(node)
                     if len(nodes_batch) >= batch_size:
-                        yield dlt.mark.with_table_name(nodes_batch, "bronze_hpo_nodes")
+                        yield dlt.mark.with_hints(
+                            nodes_batch, dlt.mark.make_hints(table_name="bronze_hpo_nodes", columns=HPONode)
+                        )
                         nodes_batch = []
                     break
 
@@ -94,15 +96,17 @@ def hpo_graph_json() -> Generator[Any]:
                     edge["source_file"] = source_file
                     edges_batch.append(edge)
                     if len(edges_batch) >= batch_size:
-                        yield dlt.mark.with_table_name(edges_batch, "bronze_hpo_edges")
+                        yield dlt.mark.with_hints(
+                            edges_batch, dlt.mark.make_hints(table_name="bronze_hpo_edges", columns=HPOEdge)
+                        )
                         edges_batch = []
                     break
 
     if nodes_batch:
-        yield dlt.mark.with_table_name(nodes_batch, "bronze_hpo_nodes")
+        yield dlt.mark.with_hints(nodes_batch, dlt.mark.make_hints(table_name="bronze_hpo_nodes", columns=HPONode))
 
     if edges_batch:
-        yield dlt.mark.with_table_name(edges_batch, "bronze_hpo_edges")
+        yield dlt.mark.with_hints(edges_batch, dlt.mark.make_hints(table_name="bronze_hpo_edges", columns=HPOEdge))
 
     if not found_graphs:
         raise ValueError("Invalid HPO JSON structure: Missing or empty 'graphs' array.")
