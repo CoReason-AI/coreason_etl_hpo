@@ -12,14 +12,17 @@ authors = [
     { name = "Akshaya M", email = "akshaya.movvar@coreason.ai" },
 ]
 dependencies = [
+    "adbc-driver-postgresql>=1.10.0",
     "dlt>=1.23.0",
     "ijson>=3.5.0",
     "loguru>=0.7.2",
     "polars>=1.39.0",
+    "psycopg2-binary>=2.9.11",
     "pyarrow>=23.0.1",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.13.1",
     "requests>=2.32.5",
+    "sqlalchemy>=2.0.48",
 ]
 license = { file = "LICENSE" }
 classifiers = [
@@ -67,7 +70,7 @@ select = ["E", "F", "B", "I", "UP", "SIM", "RUF", "ARG", "C4", "PT", "TCH", "FA"
 ignore = ["S101", "TC001", "TC002", "TC003", "UP037"]
 
 [tool.deptry.per_rule_ignores]
-DEP002 = ["dlt", "pyarrow", "pydantic", "requests"]
+DEP002 = ["dlt", "pyarrow", "pydantic", "requests", "adbc-driver-postgresql", "psycopg2-binary", "sqlalchemy"]
 
 [tool.mypy]
 python_version = "3.14"
@@ -80,6 +83,9 @@ plugins = ["pydantic.mypy"]
 addopts = "-n auto --cov=src --cov-report=term-missing --cov-report=html --cov-fail-under=100"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "live: marks tests as requiring a live database connection",
+]
 
 [tool.coverage.run]
 omit = ["tests/*"]
