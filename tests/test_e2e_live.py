@@ -98,20 +98,21 @@ def test_e2e_pipeline_live(monkeypatch: pytest.MonkeyPatch, mock_dlt_client_get:
     # 4. Verify Gold Tables via Polars using test DB connection string
     test_db_uri = "postgresql://postgres:postgres@localhost:5432/coreason_test"
 
-    dim_hpo = pl.read_database_uri("SELECT * FROM hpo_gold.dim_hpo_concept", uri=test_db_uri, engine="adbc")
+    # Type ignore to satisfy mypy bug with engine kwargs in read_database signatures in latest polars versions
+    dim_hpo = pl.read_database("SELECT * FROM hpo_gold.dim_hpo_concept", connection=test_db_uri, engine="adbc")  # type: ignore[call-overload]
     assert dim_hpo.height == 1  # HP:0000002 is obsolete so it should be filtered out
     assert dim_hpo["hp_id"].to_list() == ["HP:0000001"]
     assert dim_hpo["phenotype_name"].to_list() == ["Test Phenotype 1"]
 
-    fact_edges = pl.read_database_uri("SELECT * FROM hpo_gold.fact_hpo_relationship", uri=test_db_uri, engine="adbc")
+    fact_edges = pl.read_database("SELECT * FROM hpo_gold.fact_hpo_relationship", connection=test_db_uri, engine="adbc")  # type: ignore[call-overload]
     assert fact_edges.height == 1
     # Check that source_coreason_id and target_coreason_id exist and are not null
     assert "source_coreason_id" in fact_edges.columns
     assert "target_coreason_id" in fact_edges.columns
 
-    bridge_anno = pl.read_database_uri(
-        "SELECT * FROM hpo_gold.bridge_disease_annotation", uri=test_db_uri, engine="adbc"
-    )
+    bridge_anno = pl.read_database(
+        "SELECT * FROM hpo_gold.bridge_disease_annotation", connection=test_db_uri, engine="adbc"
+    )  # type: ignore[call-overload]
     assert bridge_anno.height == 1
     assert bridge_anno["disease_id"].to_list() == ["OMIM:101600"]
     assert bridge_anno["disease_name"].to_list() == ["Disease 1"]
