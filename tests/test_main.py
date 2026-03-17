@@ -14,7 +14,7 @@ def test_run_pipeline() -> None:
 
     with (
         mock.patch("dlt.pipeline") as mock_dlt_pipeline,
-        mock.patch("polars.read_database_uri") as mock_read_db,
+        mock.patch("polars.read_database") as mock_read_db,
         mock.patch("polars.DataFrame.write_database") as mock_write_db,
     ):
         # Mock DLT pipeline run
