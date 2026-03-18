@@ -5,7 +5,7 @@ from typing import Any
 import dlt
 import ijson  # type: ignore[import-untyped]
 from dlt.sources.helpers.requests import client
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class HPONodeMetaDefinition(BaseModel):
@@ -39,6 +39,31 @@ class HPOEdge(BaseModel):
     sub: str = Field(description="Subject node ID.")
     pred: str = Field(description="Predicate/relationship (e.g., is_a).")
     obj: str = Field(description="Object node ID.")
+
+
+class HPOAnnotation(BaseModel):
+    """Data contract for an HPO annotation."""
+
+    model_config = ConfigDict(extra="ignore")
+    database_id: str = Field(description="External database ID (e.g., OMIM:101600).")
+    disease_name: str | None = Field(None, description="Name of the disease.")
+    qualifier: str | None = Field(None, description="Qualifier for the annotation.")
+    hpo_id: str = Field(description="The HP Identifier (e.g., HP:0002240).")
+    reference: str | None = Field(None, description="Reference for the annotation.")
+    evidence: str | None = Field(None, description="Evidence code.")
+    onset: str | None = Field(None, description="Onset of the phenotype.")
+    frequency: str | None = Field(None, description="Frequency of the phenotype.")
+    sex: str | None = Field(None, description="Sex related to the phenotype.")
+    modifier: str | None = Field(None, description="Modifier of the phenotype.")
+    aspect: str | None = Field(None, description="Aspect of the phenotype.")
+    biocuration: str | None = Field(None, description="Biocuration history.")
+
+    @field_validator("hpo_id", "database_id")
+    @classmethod
+    def check_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Field cannot be empty")
+        return v
 
 
 @dlt.resource(name="hpo_graph_json", write_disposition="replace")
@@ -137,11 +162,21 @@ def hpo_annotations() -> Generator[Any]:
     ingestion_ts = datetime.datetime.now(datetime.UTC).isoformat()
     source_file = "phenotype.hpoa"
 
-    annotations_list = []
+    annotations_batch = []
+    batch_size = 1000
+
     for row in reader:
+        HPOAnnotation.model_validate(row)
         row["ingestion_ts"] = ingestion_ts
         row["source_file"] = source_file
-        annotations_list.append(row)
+        annotations_batch.append(row)
+        if len(annotations_batch) >= batch_size:
+            yield dlt.mark.with_hints(
+                annotations_batch, dlt.mark.make_hints(table_name="bronze_hpo_annotations", columns=HPOAnnotation)
+            )
+            annotations_batch = []
 
-    if annotations_list:
-        yield dlt.mark.with_table_name(annotations_list, "bronze_hpo_annotations")
+    if annotations_batch:
+        yield dlt.mark.with_hints(
+            annotations_batch, dlt.mark.make_hints(table_name="bronze_hpo_annotations", columns=HPOAnnotation)
+        )
