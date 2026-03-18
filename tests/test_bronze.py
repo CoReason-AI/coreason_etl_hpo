@@ -149,3 +149,41 @@ def test_hpo_annotations_success() -> None:
         assert items[0]["database_id"] == "OMIM:101600"
         assert items[0]["hpo_id"] == "HP:0000001"
         assert "ingestion_ts" in items[0]
+
+
+def test_hpo_annotations_batching() -> None:
+    """Test successful ingestion of HPO annotations with batching."""
+    mock_response = mock.MagicMock()
+    # Mocking 1500 rows to trigger batching
+    lines = [
+        b"database_id\tdisease_name\tqualifier\thpo_id\treference\tevidence\tonset\tfrequency\tsex\tmodifier\taspect\tbiocuration"
+    ]
+    lines.extend([f"OMIM:101600\tDisease {i}\t\tHP:0000001\t\tE1\t\tF1\t\t\tA1\t".encode() for i in range(1500)])
+
+    mock_response.iter_lines.return_value = (line for line in lines)
+    mock_response.raise_for_status = mock.MagicMock()
+
+    with mock.patch("coreason_etl_hpo.bronze.client.get", return_value=mock_response):
+        items = list(hpo_annotations())
+        assert len(items) == 1500
+
+
+def test_hpo_annotations_invalid_schema() -> None:
+    """Test validation error when annotation data does not match contract schema (missing hpo_id)."""
+    mock_response = mock.MagicMock()
+    # Mocking lines returned by iter_lines, missing hpo_id value
+    lines = [
+        b"database_id\tdisease_name\tqualifier\thpo_id\treference\tevidence\tonset\tfrequency\tsex\tmodifier\taspect\tbiocuration",
+        b"OMIM:101600\tDisease 1\t\t\t\tE1\t\tF1\t\t\tA1\t",
+    ]
+    mock_response.iter_lines.return_value = (line for line in lines)
+    mock_response.raise_for_status = mock.MagicMock()
+
+    from dlt.extract.exceptions import ResourceExtractionError
+    from pydantic import ValidationError
+
+    with mock.patch("coreason_etl_hpo.bronze.client.get", return_value=mock_response):
+        with pytest.raises((ResourceExtractionError, ValidationError)) as exc_info:
+            list(hpo_annotations())
+        assert "validation error" in str(exc_info.value).lower()
+        assert "HPOAnnotation" in str(exc_info.value)
