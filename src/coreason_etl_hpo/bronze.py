@@ -7,6 +7,8 @@ import ijson  # type: ignore[import-untyped]
 from dlt.sources.helpers.requests import client
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from coreason_etl_hpo.config import PipelineConfig
+
 
 class HPONodeMetaDefinition(BaseModel):
     """Data contract for the meta definition of an HPO node."""
@@ -72,8 +74,8 @@ def hpo_graph_json() -> Generator[Any]:
     Ingests the primary HPO JSON source containing ontology graph nodes and edges.
     Yields data into `bronze_hpo_nodes` and `bronze_hpo_edges` tables.
     """
-    url = "http://purl.obolibrary.org/obo/hp.json"
-    response = client.get(url, stream=True)
+    config = PipelineConfig()
+    response = client.get(config.hpo_graph_url, stream=True)
     response.raise_for_status()
 
     ingestion_ts = datetime.datetime.now(datetime.UTC).isoformat()
@@ -104,7 +106,8 @@ def hpo_graph_json() -> Generator[Any]:
                     nodes_batch.append(node)
                     if len(nodes_batch) >= batch_size:
                         yield dlt.mark.with_hints(
-                            nodes_batch, dlt.mark.make_hints(table_name="bronze_hpo_nodes", columns=HPONode)
+                            nodes_batch,
+                            dlt.mark.make_hints(table_name="coreason_etl_hpo_bronze_nodes", columns=HPONode),
                         )
                         nodes_batch = []
                     break
@@ -122,16 +125,21 @@ def hpo_graph_json() -> Generator[Any]:
                     edges_batch.append(edge)
                     if len(edges_batch) >= batch_size:
                         yield dlt.mark.with_hints(
-                            edges_batch, dlt.mark.make_hints(table_name="bronze_hpo_edges", columns=HPOEdge)
+                            edges_batch,
+                            dlt.mark.make_hints(table_name="coreason_etl_hpo_bronze_edges", columns=HPOEdge),
                         )
                         edges_batch = []
                     break
 
     if nodes_batch:
-        yield dlt.mark.with_hints(nodes_batch, dlt.mark.make_hints(table_name="bronze_hpo_nodes", columns=HPONode))
+        yield dlt.mark.with_hints(
+            nodes_batch, dlt.mark.make_hints(table_name="coreason_etl_hpo_bronze_nodes", columns=HPONode)
+        )
 
     if edges_batch:
-        yield dlt.mark.with_hints(edges_batch, dlt.mark.make_hints(table_name="bronze_hpo_edges", columns=HPOEdge))
+        yield dlt.mark.with_hints(
+            edges_batch, dlt.mark.make_hints(table_name="coreason_etl_hpo_bronze_edges", columns=HPOEdge)
+        )
 
     if not found_graphs:
         raise ValueError("Invalid HPO JSON structure: Missing or empty 'graphs' array.")
@@ -145,8 +153,8 @@ def hpo_annotations() -> Generator[Any]:
     """
     import csv
 
-    url = "http://purl.obolibrary.org/obo/hp/hpoa/phenotype.hpoa"
-    response = client.get(url, stream=True)
+    config = PipelineConfig()
+    response = client.get(config.hpo_annotations_url, stream=True)
     response.raise_for_status()
 
     def _filter_comments(it: Generator[bytes]) -> Generator[str]:
@@ -172,11 +180,13 @@ def hpo_annotations() -> Generator[Any]:
         annotations_batch.append(row)
         if len(annotations_batch) >= batch_size:
             yield dlt.mark.with_hints(
-                annotations_batch, dlt.mark.make_hints(table_name="bronze_hpo_annotations", columns=HPOAnnotation)
+                annotations_batch,
+                dlt.mark.make_hints(table_name="coreason_etl_hpo_bronze_annotations", columns=HPOAnnotation),
             )
             annotations_batch = []
 
     if annotations_batch:
         yield dlt.mark.with_hints(
-            annotations_batch, dlt.mark.make_hints(table_name="bronze_hpo_annotations", columns=HPOAnnotation)
+            annotations_batch,
+            dlt.mark.make_hints(table_name="coreason_etl_hpo_bronze_annotations", columns=HPOAnnotation),
         )
