@@ -31,7 +31,7 @@ def run_pipeline() -> None:
     pipeline = dlt.pipeline(
         pipeline_name="hpo_pipeline",
         destination=dlt.destinations.postgres(config.postgres_uri),
-        dataset_name="hpo_bronze",
+        dataset_name="bronze",
     )
 
     # Run the ingestion sources
@@ -43,10 +43,14 @@ def run_pipeline() -> None:
     # Read Bronze tables
     # Note: `engine` is not a valid parameter for `read_database` with `connection` as a URI string.
     # The appropriate engine is dynamically selected based on the URI string provided.
-    bronze_nodes = pl.read_database("SELECT * FROM hpo_bronze.bronze_hpo_nodes", connection=config.postgres_uri)
-    bronze_edges = pl.read_database("SELECT * FROM hpo_bronze.bronze_hpo_edges", connection=config.postgres_uri)
+    bronze_nodes = pl.read_database(
+        "SELECT * FROM bronze.coreason_etl_hpo_bronze_nodes", connection=config.postgres_uri
+    )
+    bronze_edges = pl.read_database(
+        "SELECT * FROM bronze.coreason_etl_hpo_bronze_edges", connection=config.postgres_uri
+    )
     bronze_annotations = pl.read_database(
-        "SELECT * FROM hpo_bronze.bronze_hpo_annotations", connection=config.postgres_uri
+        "SELECT * FROM bronze.coreason_etl_hpo_bronze_annotations", connection=config.postgres_uri
     )
 
     # Silver transformations
@@ -57,13 +61,16 @@ def run_pipeline() -> None:
     # Persist Silver layer
     logger.info("Writing Silver tables to PostgreSQL...")
     silver_nodes.write_database(
-        "hpo_silver.silver_hpo_nodes", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
+        "silver.coreason_etl_hpo_silver_nodes", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
     )
     silver_edges.write_database(
-        "hpo_silver.silver_hpo_edges", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
+        "silver.coreason_etl_hpo_silver_edges", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
     )
     silver_annotations.write_database(
-        "hpo_silver.silver_hpo_annotations", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
+        "silver.coreason_etl_hpo_silver_annotations",
+        connection=config.postgres_uri,
+        engine="adbc",
+        if_table_exists="replace",
     )
 
     # Gold projections
@@ -71,7 +78,7 @@ def run_pipeline() -> None:
     fact_relationship = project_fact_hpo_relationship(silver_edges)
     bridge_annotation = project_bridge_disease_annotation(silver_annotations)
 
-    # Write to Gold schema in DB (using hpo_gold dataset name equivalently)
+    # Write to Gold schema in DB
     logger.info("Writing Gold tables to PostgreSQL...")
 
     # The adbc/sqlalchemy engines would be used.
@@ -79,13 +86,22 @@ def run_pipeline() -> None:
     # Here, writing via `write_database`
 
     dim_concept.write_database(
-        "hpo_gold.dim_hpo_concept", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
+        "gold.coreason_etl_hpo_gold_dim_concept",
+        connection=config.postgres_uri,
+        engine="adbc",
+        if_table_exists="replace",
     )
     fact_relationship.write_database(
-        "hpo_gold.fact_hpo_relationship", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
+        "gold.coreason_etl_hpo_gold_fact_relationship",
+        connection=config.postgres_uri,
+        engine="adbc",
+        if_table_exists="replace",
     )
     bridge_annotation.write_database(
-        "hpo_gold.bridge_disease_annotation", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
+        "gold.coreason_etl_hpo_gold_bridge_annotation",
+        connection=config.postgres_uri,
+        engine="adbc",
+        if_table_exists="replace",
     )
 
     logger.info("Pipeline execution completed successfully.")
