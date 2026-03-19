@@ -9,7 +9,7 @@ def project_dim_hpo_concept(silver_nodes_df: pl.LazyFrame | pl.DataFrame) -> pl.
     lazy_df = silver_nodes_df.lazy() if isinstance(silver_nodes_df, pl.DataFrame) else silver_nodes_df
 
     return (
-        lazy_df.filter(~pl.col("is_obsolete"))
+        lazy_df.filter(~pl.col("is_obsolete").fill_null(False))
         .select(["coreason_id", "hp_id", "phenotype_name", "definition"])
         .collect()
     )

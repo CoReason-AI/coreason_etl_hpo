@@ -2,6 +2,9 @@ import polars as pl
 
 from coreason_etl_hpo.identity import generate_coreason_id
 
+# Constants
+HP_ID_REGEX = r"^HP:\d{7}$"
+
 
 def transform_silver_nodes(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame:
     """
@@ -51,7 +54,7 @@ def transform_silver_nodes(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFra
         select_exprs.append(pl.lit(None, dtype=pl.String).alias("definition"))
 
     if dep_col:
-        select_exprs.append(pl.col(dep_col).cast(pl.Boolean).alias("is_obsolete"))
+        select_exprs.append(pl.col(dep_col).fill_null(False).cast(pl.Boolean).alias("is_obsolete"))
     else:
         select_exprs.append(pl.lit(False).alias("is_obsolete"))
 
@@ -62,7 +65,7 @@ def transform_silver_nodes(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFra
     result_df = transformed_df.collect()
 
     # Validate regex for hp_id
-    invalid_ids = result_df.filter(~pl.col("hp_id").str.contains(r"^HP:\d{7}$"))
+    invalid_ids = result_df.filter(~pl.col("hp_id").str.contains(HP_ID_REGEX))
     if not invalid_ids.is_empty():
         raise ValueError(f"Found invalid hp_id entries: {invalid_ids['hp_id'].to_list()}")
 
@@ -103,11 +106,11 @@ def transform_silver_edges(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFra
     result_df = transformed_df.collect()
 
     # Validate regex for hp_id
-    invalid_sources = result_df.filter(~pl.col("source_hp_id").str.contains(r"^HP:\d{7}$"))
+    invalid_sources = result_df.filter(~pl.col("source_hp_id").str.contains(HP_ID_REGEX))
     if not invalid_sources.is_empty():
         raise ValueError(f"Found invalid source_hp_id entries: {invalid_sources['source_hp_id'].to_list()}")
 
-    invalid_targets = result_df.filter(~pl.col("target_hp_id").str.contains(r"^HP:\d{7}$"))
+    invalid_targets = result_df.filter(~pl.col("target_hp_id").str.contains(HP_ID_REGEX))
     if not invalid_targets.is_empty():
         raise ValueError(f"Found invalid target_hp_id entries: {invalid_targets['target_hp_id'].to_list()}")
 
@@ -130,21 +133,25 @@ def transform_silver_annotations(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.D
     # The requirement mentions mapping external database identifiers to coreason_id
     # We will generate coreason_id based on hpo_id, and keep database_id
 
-    transformed_df = lazy_df.select(
-        [
-            pl.col("hpo_id").alias("hp_id"),
-            pl.col("database_id").alias("disease_id"),
-            pl.col("disease_name"),
-            pl.col("evidence"),
-            pl.col("frequency"),
-            pl.col("aspect"),
-        ]
-    ).with_columns(generate_coreason_id(pl.col("hp_id")).alias("coreason_id"))
+    transformed_df = (
+        lazy_df.select(
+            [
+                pl.col("hpo_id").str.extract(r"(HP:\d+)").alias("hp_id"),
+                pl.col("database_id").alias("disease_id"),
+                pl.col("disease_name"),
+                pl.col("evidence"),
+                pl.col("frequency"),
+                pl.col("aspect"),
+            ]
+        )
+        .filter(pl.col("hp_id").is_not_null())
+        .with_columns(generate_coreason_id(pl.col("hp_id")).alias("coreason_id"))
+    )
 
     result_df = transformed_df.collect()
 
     # Validate regex for hp_id
-    invalid_hps = result_df.filter(~pl.col("hp_id").str.contains(r"^HP:\d{7}$"))
+    invalid_hps = result_df.filter(~pl.col("hp_id").str.contains(HP_ID_REGEX))
     if not invalid_hps.is_empty():
         raise ValueError(f"Found invalid hp_id entries: {invalid_hps['hp_id'].to_list()}")
 

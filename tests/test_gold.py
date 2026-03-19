@@ -9,17 +9,17 @@ from coreason_etl_hpo.gold import (
 
 def test_project_dim_hpo_concept() -> None:
     data = {
-        "coreason_id": ["id1", "id2"],
-        "hp_id": ["HP:001", "HP:002"],
-        "phenotype_name": ["Name1", "Name2"],
-        "definition": ["Def1", "Def2"],
-        "is_obsolete": [False, True],
+        "coreason_id": ["C1", "C2", "C3"],
+        "hp_id": ["HP:0000001", "HP:0000002", "HP:0000003"],
+        "phenotype_name": ["P1", "P2", "P3"],
+        "definition": ["D1", "D2", "D3"],
+        "is_obsolete": [False, True, None],
     }
     df = pl.DataFrame(data)
     result = project_dim_hpo_concept(df)
 
-    assert result.height == 1
-    assert result["coreason_id"][0] == "id1"
+    assert result.height == 2
+    assert result["hp_id"].to_list() == ["HP:0000001", "HP:0000003"]
     assert "is_obsolete" not in result.columns
 
 
