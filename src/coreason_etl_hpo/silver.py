@@ -51,7 +51,7 @@ def transform_silver_nodes(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFra
         select_exprs.append(pl.lit(None, dtype=pl.String).alias("definition"))
 
     if dep_col:
-        select_exprs.append(pl.col(dep_col).cast(pl.Boolean).alias("is_obsolete"))
+        select_exprs.append(pl.col(dep_col).fill_null(False).cast(pl.Boolean).alias("is_obsolete"))
     else:
         select_exprs.append(pl.lit(False).alias("is_obsolete"))
 

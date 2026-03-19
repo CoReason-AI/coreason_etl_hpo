@@ -4,6 +4,25 @@ import pytest
 from coreason_etl_hpo.silver import transform_silver_annotations, transform_silver_edges, transform_silver_nodes
 
 
+def test_transform_silver_nodes_complex_edge_cases() -> None:
+    """Test silver node transformations with null labels, missing descriptions, spaces around ids, etc."""
+    data = {
+        "id": ["HP:0000001", "HP:0000002", "HP:0000003"],
+        "lbl": [" All ", None, "\tAbnormality\n"],
+        "meta__definition__val": ["Root of all terms.", None, ""],
+        "meta__deprecated": [False, None, True],
+    }
+    df = pl.DataFrame(data)
+
+    result = transform_silver_nodes(df)
+
+    assert result.height == 3
+    assert result["phenotype_name"].to_list() == ["All", None, "Abnormality"]
+    assert result["hp_id"].to_list() == ["HP:0000001", "HP:0000002", "HP:0000003"]
+    assert result["definition"].to_list() == ["Root of all terms.", None, ""]
+    assert result["is_obsolete"].to_list() == [False, False, True]
+
+
 def test_transform_silver_nodes_success() -> None:
     data = {
         "id": ["HP:0000001", "HP:0000002"],
@@ -55,6 +74,21 @@ def test_transform_silver_nodes_lazyframe() -> None:
 
     assert isinstance(result, pl.DataFrame)
     assert result.height == 1
+
+
+def test_transform_silver_edges_complex_filter() -> None:
+    """Test filtering of non-is_a relationships."""
+    data = {
+        "sub": ["HP:0000002", "HP:0000003", "HP:0000004", "HP:0000005"],
+        "pred": ["is_a", "has_part", "is_a", "part_of"],
+        "obj": ["HP:0000001", "HP:0000001", "HP:0000001", "HP:0000001"],
+    }
+    df = pl.DataFrame(data)
+
+    result = transform_silver_edges(df)
+
+    assert result.height == 2
+    assert result["source_hp_id"].to_list() == ["HP:0000002", "HP:0000004"]
 
 
 def test_transform_silver_edges_success() -> None:
