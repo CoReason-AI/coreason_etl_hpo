@@ -16,6 +16,10 @@ class PipelineConfig(BaseSettings):
     # Environment level
     app_env: str = "development"
 
+    # HPO Source Endpoints
+    hpo_graph_url: str = "http://purl.obolibrary.org/obo/hp.json"
+    hpo_annotations_url: str = "http://purl.obolibrary.org/obo/hp/hpoa/phenotype.hpoa"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @property
