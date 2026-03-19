@@ -47,4 +47,4 @@ def test_run_pipeline() -> None:
         mock_dlt_pipeline.assert_called_once()
         mock_pipeline_instance.run.assert_called_once()
         assert mock_read_db.call_count == 3
-        assert mock_write_db.call_count == 3
+        assert mock_write_db.call_count == 6

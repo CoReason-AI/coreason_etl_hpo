@@ -54,6 +54,18 @@ def run_pipeline() -> None:
     silver_edges = transform_silver_edges(bronze_edges)
     silver_annotations = transform_silver_annotations(bronze_annotations)
 
+    # Persist Silver layer
+    logger.info("Writing Silver tables to PostgreSQL...")
+    silver_nodes.write_database(
+        "hpo_silver.silver_hpo_nodes", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
+    )
+    silver_edges.write_database(
+        "hpo_silver.silver_hpo_edges", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
+    )
+    silver_annotations.write_database(
+        "hpo_silver.silver_hpo_annotations", connection=config.postgres_uri, engine="adbc", if_table_exists="replace"
+    )
+
     # Gold projections
     dim_concept = project_dim_hpo_concept(silver_nodes)
     fact_relationship = project_fact_hpo_relationship(silver_edges)

@@ -126,12 +126,12 @@ def test_transform_silver_edges_invalid_target_id() -> None:
 
 def test_transform_silver_annotations_success() -> None:
     data = {
-        "database_id": ["OMIM:619340", "OMIM:619340"],
-        "disease_name": ["Disease 1", "Disease 1"],
-        "hpo_id": ["HP:0011097", "HP:0002187"],
-        "evidence": ["PCS", "PCS"],
-        "frequency": ["1/2", "1/1"],
-        "aspect": ["P", "P"],
+        "database_id": ["OMIM:619340", "OMIM:619340", "OMIM:619340"],
+        "disease_name": ["Disease 1", "Disease 1", "Disease 1"],
+        "hpo_id": ["HP:0011097", "HP:0002187  ", "INVALID"],
+        "evidence": ["PCS", "PCS", "PCS"],
+        "frequency": ["1/2", "1/1", "1/1"],
+        "aspect": ["P", "P", "P"],
     }
     df = pl.DataFrame(data)
 
