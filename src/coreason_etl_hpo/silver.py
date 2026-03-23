@@ -141,21 +141,17 @@ def transform_silver_annotations(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.D
     # The requirement mentions mapping external database identifiers to coreason_id
     # We will generate coreason_id based on hpo_id, and keep database_id
 
-    transformed_df = (
-        lazy_df.select(
-            [
-                pl.col("hpo_id").str.extract(r"(HP:\d+)").alias("hp_id"),
-                pl.col("database_id").alias("disease_id"),
-                pl.col("disease_name"),
-                pl.col("evidence"),
-                pl.col("frequency"),
-                pl.col("aspect"),
-                pl.col("hpo_id").alias("_original_hpo_id"),
-            ]
-        )
-        .filter(pl.col("hp_id").is_not_null())
-        .with_columns(generate_coreason_id(pl.col("hp_id")).alias("coreason_id"))
-    )
+    transformed_df = lazy_df.select(
+        [
+            pl.col("hpo_id").str.extract(r"(HP:\d+)").alias("hp_id"),
+            pl.col("database_id").alias("disease_id"),
+            pl.col("disease_name"),
+            pl.col("evidence"),
+            pl.col("frequency"),
+            pl.col("aspect"),
+            pl.col("hpo_id").alias("_original_hpo_id"),
+        ]
+    ).with_columns(generate_coreason_id(pl.col("hp_id")).alias("coreason_id"))
 
     result_df = transformed_df.collect()
 
