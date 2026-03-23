@@ -47,6 +47,7 @@ def transform_silver_nodes(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFra
         # Extract HP_1234567 or HP:1234567 and replace the underscore with a colon
         pl.col("id").str.extract(r"(HP[_:]\d{7})").str.replace("_", ":").alias("hp_id"),
         pl.col("lbl").str.strip_chars().alias("phenotype_name"),
+        pl.col("id"),
     ]
 
     if def_col:
@@ -66,11 +67,12 @@ def transform_silver_nodes(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFra
     result_df = transformed_df.collect()
 
     # Validate regex for hp_id
-    invalid_ids = result_df.filter(~pl.col("hp_id").str.contains(HP_ID_REGEX))
+    invalid_ids = result_df.filter(pl.col("hp_id").is_null() | ~pl.col("hp_id").str.contains(HP_ID_REGEX))
     if not invalid_ids.is_empty():
-        raise ValueError(f"Found invalid hp_id entries: {invalid_ids['hp_id'].to_list()}")
+        # Using raw 'id' column to show the original invalid value if 'hp_id' is null
+        raise ValueError(f"Found invalid hp_id entries: {invalid_ids['id'].to_list()}")
 
-    return result_df
+    return result_df.drop(["id"])
 
 
 def transform_silver_edges(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame:
@@ -93,9 +95,10 @@ def transform_silver_edges(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFra
             [
                 pl.col("sub").str.extract(r"(HP[_:]\d{7})").str.replace("_", ":").alias("source_hp_id"),
                 pl.col("obj").str.extract(r"(HP[_:]\d{7})").str.replace("_", ":").alias("target_hp_id"),
+                pl.col("sub"),
+                pl.col("obj"),
             ]
         )
-        .drop_nulls(subset=["source_hp_id", "target_hp_id"])
         .with_columns(
             [
                 generate_coreason_id(pl.col("source_hp_id")).alias("source_coreason_id"),
@@ -107,15 +110,19 @@ def transform_silver_edges(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFra
     result_df = transformed_df.collect()
 
     # Validate regex for hp_id
-    invalid_sources = result_df.filter(~pl.col("source_hp_id").str.contains(HP_ID_REGEX))
+    invalid_sources = result_df.filter(
+        pl.col("source_hp_id").is_null() | ~pl.col("source_hp_id").str.contains(HP_ID_REGEX)
+    )
     if not invalid_sources.is_empty():
-        raise ValueError(f"Found invalid source_hp_id entries: {invalid_sources['source_hp_id'].to_list()}")
+        raise ValueError(f"Found invalid source_hp_id entries: {invalid_sources['sub'].to_list()}")
 
-    invalid_targets = result_df.filter(~pl.col("target_hp_id").str.contains(HP_ID_REGEX))
+    invalid_targets = result_df.filter(
+        pl.col("target_hp_id").is_null() | ~pl.col("target_hp_id").str.contains(HP_ID_REGEX)
+    )
     if not invalid_targets.is_empty():
-        raise ValueError(f"Found invalid target_hp_id entries: {invalid_targets['target_hp_id'].to_list()}")
+        raise ValueError(f"Found invalid target_hp_id entries: {invalid_targets['obj'].to_list()}")
 
-    return result_df
+    return result_df.drop(["sub", "obj"])
 
 
 def transform_silver_annotations(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame:
@@ -143,6 +150,7 @@ def transform_silver_annotations(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.D
                 pl.col("evidence"),
                 pl.col("frequency"),
                 pl.col("aspect"),
+                pl.col("hpo_id").alias("_original_hpo_id"),
             ]
         )
         .filter(pl.col("hp_id").is_not_null())
@@ -152,8 +160,8 @@ def transform_silver_annotations(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.D
     result_df = transformed_df.collect()
 
     # Validate regex for hp_id
-    invalid_hps = result_df.filter(~pl.col("hp_id").str.contains(HP_ID_REGEX))
+    invalid_hps = result_df.filter(pl.col("hp_id").is_null() | ~pl.col("hp_id").str.contains(HP_ID_REGEX))
     if not invalid_hps.is_empty():
-        raise ValueError(f"Found invalid hp_id entries: {invalid_hps['hp_id'].to_list()}")
+        raise ValueError(f"Found invalid hp_id entries: {invalid_hps['_original_hpo_id'].to_list()}")
 
-    return result_df
+    return result_df.drop(["_original_hpo_id"])
