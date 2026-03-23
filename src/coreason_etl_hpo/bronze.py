@@ -34,6 +34,8 @@ class HPONode(BaseModel):
     lbl: str | None = Field(None, description="Primary human-readable name.")
     type: str | None = Field(None, description="Type or property type of the node.")
     meta: HPONodeMeta | None = Field(None, description="Metadata for the node.")
+    ingestion_ts: str | None = Field(None, description="Ingestion timestamp.")
+    source_file: str | None = Field(None, description="Source file name.")
 
 
 class HPOEdge(BaseModel):
@@ -43,6 +45,8 @@ class HPOEdge(BaseModel):
     sub: str = Field(description="Subject node ID.")
     pred: str = Field(description="Predicate/relationship (e.g., is_a).")
     obj: str = Field(description="Object node ID.")
+    ingestion_ts: str | None = Field(None, description="Ingestion timestamp.")
+    source_file: str | None = Field(None, description="Source file name.")
 
 
 class HPOAnnotation(BaseModel):
@@ -61,6 +65,8 @@ class HPOAnnotation(BaseModel):
     modifier: str | None = Field(None, description="Modifier of the phenotype.")
     aspect: str | None = Field(None, description="Aspect of the phenotype.")
     biocuration: str | None = Field(None, description="Biocuration history.")
+    ingestion_ts: str | None = Field(None, description="Ingestion timestamp.")
+    source_file: str | None = Field(None, description="Source file name.")
 
     @field_validator("hpo_id", "database_id")
     @classmethod
