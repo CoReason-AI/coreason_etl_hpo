@@ -44,7 +44,8 @@ def transform_silver_nodes(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFra
         dep_col = None
 
     select_exprs = [
-        pl.col("id").alias("hp_id"),
+        # Extract HP_1234567 or HP:1234567 and replace the underscore with a colon
+        pl.col("id").str.extract(r"(HP[_:]\d{7})").str.replace("_", ":").alias("hp_id"),
         pl.col("lbl").str.strip_chars().alias("phenotype_name"),
     ]
 
@@ -85,16 +86,16 @@ def transform_silver_edges(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFra
     lazy_df = bronze_df.lazy() if isinstance(bronze_df, pl.DataFrame) else bronze_df
 
     # Extract required columns (sub, pred, obj)
-    # Filter for 'is_a' relationships
-
+    # Filter for 'is_a' or 'subClassOf' relationships and extract clean HP IDs
     transformed_df = (
-        lazy_df.filter(pl.col("pred") == "is_a")
+        lazy_df.filter(pl.col("pred").str.contains("is_a|subClassOf"))
         .select(
             [
-                pl.col("sub").alias("source_hp_id"),
-                pl.col("obj").alias("target_hp_id"),
+                pl.col("sub").str.extract(r"(HP[_:]\d{7})").str.replace("_", ":").alias("source_hp_id"),
+                pl.col("obj").str.extract(r"(HP[_:]\d{7})").str.replace("_", ":").alias("target_hp_id"),
             ]
         )
+        .drop_nulls(subset=["source_hp_id", "target_hp_id"])
         .with_columns(
             [
                 generate_coreason_id(pl.col("source_hp_id")).alias("source_coreason_id"),
