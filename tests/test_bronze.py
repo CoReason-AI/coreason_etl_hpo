@@ -122,8 +122,8 @@ def test_hpo_graph_json_missing_graphs() -> None:
         assert "Invalid HPO JSON structure" in str(exc_info.value)
 
 
-def test_hpo_graph_json_batching() -> None:
-    """Test successful ingestion of HPO JSON nodes and edges with batching."""
+def test_hpo_graph_json_yield_all() -> None:
+    """Test successful ingestion of HPO JSON nodes and edges with direct yielding."""
     mock_response = mock.MagicMock()
     # Mocking response.raw as a BytesIO stream
     nodes = [{"id": f"HP:{str(i).zfill(7)}", "lbl": f"Test {i}"} for i in range(1500)]
@@ -165,10 +165,10 @@ def test_hpo_annotations_success() -> None:
         assert "ingestion_ts" in items[0]
 
 
-def test_hpo_annotations_batching() -> None:
-    """Test successful ingestion of HPO annotations with batching."""
+def test_hpo_annotations_yield_all() -> None:
+    """Test successful ingestion of HPO annotations with yielding directly."""
     mock_response = mock.MagicMock()
-    # Mocking 1500 rows to trigger batching
+    # Mocking 1500 rows to trigger yielding test
     lines = [
         b"database_id\tdisease_name\tqualifier\thpo_id\treference\tevidence\tonset\tfrequency\tsex\tmodifier\taspect\tbiocuration"
     ]

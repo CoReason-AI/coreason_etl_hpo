@@ -6,6 +6,18 @@ from coreason_etl_hpo.identity import generate_coreason_id
 HP_ID_REGEX = r"^HP:\d{7}$"
 
 
+def _validate_and_drop_original_id(df: pl.DataFrame, target_col: str, original_col: str) -> pl.DataFrame:
+    """
+    Validates that the target HP ID column conforms to the HP_ID_REGEX and is not null.
+    Raises a ValueError exposing the original invalid ID if validation fails.
+    Drops the original ID column upon success.
+    """
+    invalid_ids = df.filter(pl.col(target_col).is_null() | ~pl.col(target_col).str.contains(HP_ID_REGEX))
+    if not invalid_ids.is_empty():
+        raise ValueError(f"Found invalid {target_col} entries: {invalid_ids[original_col].to_list()}")
+    return df.drop([original_col])
+
+
 def transform_silver_nodes(
     bronze_df: pl.LazyFrame | pl.DataFrame,
     synonyms_df: pl.LazyFrame | pl.DataFrame | None = None,
@@ -116,13 +128,7 @@ def transform_silver_nodes(
 
     result_df = transformed_df.collect()
 
-    # Validate regex for hp_id
-    invalid_ids = result_df.filter(pl.col("hp_id").is_null() | ~pl.col("hp_id").str.contains(HP_ID_REGEX))
-    if not invalid_ids.is_empty():
-        # Using raw 'id' column to show the original invalid value if 'hp_id' is null
-        raise ValueError(f"Found invalid hp_id entries: {invalid_ids['id'].to_list()}")
-
-    return result_df.drop(["id"])
+    return _validate_and_drop_original_id(result_df, "hp_id", "id")
 
 
 def transform_silver_edges(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame:
@@ -159,20 +165,8 @@ def transform_silver_edges(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFra
 
     result_df = transformed_df.collect()
 
-    # Validate regex for hp_id
-    invalid_sources = result_df.filter(
-        pl.col("source_hp_id").is_null() | ~pl.col("source_hp_id").str.contains(HP_ID_REGEX)
-    )
-    if not invalid_sources.is_empty():
-        raise ValueError(f"Found invalid source_hp_id entries: {invalid_sources['sub'].to_list()}")
-
-    invalid_targets = result_df.filter(
-        pl.col("target_hp_id").is_null() | ~pl.col("target_hp_id").str.contains(HP_ID_REGEX)
-    )
-    if not invalid_targets.is_empty():
-        raise ValueError(f"Found invalid target_hp_id entries: {invalid_targets['obj'].to_list()}")
-
-    return result_df.drop(["sub", "obj"])
+    result_df = _validate_and_drop_original_id(result_df, "source_hp_id", "sub")
+    return _validate_and_drop_original_id(result_df, "target_hp_id", "obj")
 
 
 def transform_silver_annotations(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame:
@@ -208,9 +202,4 @@ def transform_silver_annotations(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.D
 
     result_df = transformed_df.collect()
 
-    # Validate regex for hp_id
-    invalid_hps = result_df.filter(pl.col("hp_id").is_null() | ~pl.col("hp_id").str.contains(HP_ID_REGEX))
-    if not invalid_hps.is_empty():
-        raise ValueError(f"Found invalid hp_id entries: {invalid_hps['_original_hpo_id'].to_list()}")
-
-    return result_df.drop(["_original_hpo_id"])
+    return _validate_and_drop_original_id(result_df, "hp_id", "_original_hpo_id")
