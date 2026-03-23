@@ -7,6 +7,7 @@ from coreason_etl_hpo.gold import (
     project_bridge_disease_annotation,
     project_dim_hpo_concept,
     project_fact_hpo_relationship,
+    project_obt_hpo_reporting,
 )
 from coreason_etl_hpo.silver import (
     transform_silver_annotations,
@@ -46,6 +47,14 @@ def run_pipeline() -> None:
     bronze_nodes = pl.read_database(
         "SELECT * FROM bronze.coreason_etl_hpo_bronze_nodes", connection=config.postgres_uri
     )
+    # Check if synonyms table exists before reading to avoid initial run failures where no synonyms exist yet
+    try:
+        bronze_synonyms = pl.read_database(
+            "SELECT * FROM bronze.coreason_etl_hpo_bronze_nodes__meta__synonyms", connection=config.postgres_uri
+        )
+    except Exception:
+        bronze_synonyms = None
+
     bronze_edges = pl.read_database(
         "SELECT * FROM bronze.coreason_etl_hpo_bronze_edges", connection=config.postgres_uri
     )
@@ -54,7 +63,7 @@ def run_pipeline() -> None:
     )
 
     # Silver transformations
-    silver_nodes = transform_silver_nodes(bronze_nodes)
+    silver_nodes = transform_silver_nodes(bronze_nodes, synonyms_df=bronze_synonyms, edges_df=bronze_edges)
     silver_edges = transform_silver_edges(bronze_edges)
     silver_annotations = transform_silver_annotations(bronze_annotations)
 
@@ -78,6 +87,9 @@ def run_pipeline() -> None:
     fact_relationship = project_fact_hpo_relationship(silver_edges)
     bridge_annotation = project_bridge_disease_annotation(silver_annotations)
 
+    # OBT Reporting
+    obt_reporting = project_obt_hpo_reporting(dim_concept, bridge_annotation)
+
     # Write to Gold schema in DB
     logger.info("Writing Gold tables to PostgreSQL...")
 
@@ -99,6 +111,12 @@ def run_pipeline() -> None:
     )
     bridge_annotation.write_database(
         "gold.coreason_etl_hpo_gold_bridge_annotation",
+        connection=config.postgres_uri,
+        engine="adbc",
+        if_table_exists="replace",
+    )
+    obt_reporting.write_database(
+        "gold.coreason_etl_hpo_gold_obt_reporting",
         connection=config.postgres_uri,
         engine="adbc",
         if_table_exists="replace",

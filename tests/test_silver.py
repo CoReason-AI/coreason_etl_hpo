@@ -11,6 +11,7 @@ def test_transform_silver_nodes_complex_edge_cases() -> None:
         "lbl": [" All ", None, "\tAbnormality\n"],
         "meta__definition__val": ["Root of all terms.", None, ""],
         "meta__deprecated": [False, None, True],
+        "_dlt_id": ["uuid1", "uuid2", "uuid3"],
     }
     df = pl.DataFrame(data)
 
@@ -27,19 +28,30 @@ def test_transform_silver_nodes_success() -> None:
     data = {
         "id": ["HP:0000001", "HP:0000002"],
         "lbl": [" All ", " Abnormality of body height "],
+        "type": ["CLASS", "PROPERTY"],
         "meta__definition__val": ["Root of all terms.", "Abnormality of height."],
         "meta__deprecated": [False, True],
+        "_dlt_id": ["uuid1", "uuid2"],
     }
     df = pl.DataFrame(data)
 
-    result = transform_silver_nodes(df)
+    synonyms_data = {"val": ["Syn1", "Syn2", "Syn3"], "_dlt_parent_id": ["uuid1", "uuid1", "uuid2"]}
+    synonyms_df = pl.DataFrame(synonyms_data)
+
+    edges_data = {"sub": ["HP:0000003", "HP:0000004"], "pred": ["is_a", "other"], "obj": ["HP:0000001", "HP:0000002"]}
+    edges_df = pl.DataFrame(edges_data)
+
+    result = transform_silver_nodes(df, synonyms_df=synonyms_df, edges_df=edges_df)
 
     assert result.height == 2
     assert "coreason_id" in result.columns
     assert result["phenotype_name"].to_list() == ["All", "Abnormality of body height"]
     assert result["hp_id"].to_list() == ["HP:0000001", "HP:0000002"]
+    assert result["type"].to_list() == ["CLASS", "PROPERTY"]
     assert result["definition"].to_list() == ["Root of all terms.", "Abnormality of height."]
     assert result["is_obsolete"].to_list() == [False, True]
+    assert result["synonym"].to_list() == ["Syn1|Syn2", "Syn3"]
+    assert result["is_a_parent"].to_list() == [True, False]
 
 
 def test_transform_silver_nodes_invalid_hp_id() -> None:
@@ -48,6 +60,7 @@ def test_transform_silver_nodes_invalid_hp_id() -> None:
         "lbl": ["Invalid", "Valid"],
         "meta__definition__val": ["", ""],
         "meta__deprecated": [False, False],
+        "_dlt_id": ["uuid1", "uuid2"],
     }
     df = pl.DataFrame(data)
 
@@ -56,18 +69,29 @@ def test_transform_silver_nodes_invalid_hp_id() -> None:
 
 
 def test_transform_silver_nodes_missing_meta_cols() -> None:
-    data = {"id": ["HP:0000001"], "lbl": ["All"]}
+    data = {"id": ["HP:0000001"], "lbl": ["All"], "_dlt_id": ["uuid1"]}
     df = pl.DataFrame(data)
 
-    result = transform_silver_nodes(df)
+    # Send empty dataframes with correct columns to hit the "else" blocks
+    # when columns are completely missing
+    synonyms_data = {"other_col": ["val"]}
+    synonyms_df = pl.DataFrame(synonyms_data)
+
+    edges_data = {"other_col": ["val"]}
+    edges_df = pl.DataFrame(edges_data)
+
+    result = transform_silver_nodes(df, synonyms_df=synonyms_df, edges_df=edges_df)
 
     assert result.height == 1
     assert result["definition"].to_list() == [None]
     assert result["is_obsolete"].to_list() == [False]
+    assert result["type"].to_list() == [None]
+    assert result["synonym"].to_list() == [None]
+    assert result["is_a_parent"].to_list() == [False]
 
 
 def test_transform_silver_nodes_lazyframe() -> None:
-    data = {"id": ["HP:0000001"], "lbl": ["All"]}
+    data = {"id": ["HP:0000001"], "lbl": ["All"], "_dlt_id": ["uuid1"]}
     df = pl.DataFrame(data).lazy()
 
     result = transform_silver_nodes(df)
@@ -132,6 +156,9 @@ def test_transform_silver_annotations_success() -> None:
         "evidence": ["PCS", "PCS"],
         "frequency": ["1/2", "1/1"],
         "aspect": ["P", "P"],
+        "reference": ["PMID:1", "PMID:2"],
+        "onset": ["HP:01", "HP:02"],
+        "modifier": ["M1", "M2"],
     }
     df = pl.DataFrame(data)
 
@@ -141,6 +168,9 @@ def test_transform_silver_annotations_success() -> None:
     assert "coreason_id" in result.columns
     assert result["hp_id"].to_list() == ["HP:0011097", "HP:0002187"]
     assert result["disease_id"].to_list() == ["OMIM:619340", "OMIM:619340"]
+    assert result["reference"].to_list() == ["PMID:1", "PMID:2"]
+    assert result["onset"].to_list() == ["HP:01", "HP:02"]
+    assert result["modifier"].to_list() == ["M1", "M2"]
 
 
 def test_transform_silver_annotations_invalid_hp_id() -> None:
@@ -151,6 +181,9 @@ def test_transform_silver_annotations_invalid_hp_id() -> None:
         "evidence": ["PCS"],
         "frequency": ["1/2"],
         "aspect": ["P"],
+        "reference": [""],
+        "onset": [""],
+        "modifier": [""],
     }
     df = pl.DataFrame(data)
 

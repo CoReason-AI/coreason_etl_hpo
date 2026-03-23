@@ -23,6 +23,7 @@ class HPONodeMeta(BaseModel):
     model_config = ConfigDict(extra="ignore")
     definition: HPONodeMetaDefinition | None = Field(None, description="Definition of the node.")
     deprecated: bool | None = Field(None, description="True if the node is deprecated.")
+    synonyms: list[Any] | None = Field(None, description="List of synonyms for the node.")
 
 
 class HPONode(BaseModel):
@@ -31,6 +32,7 @@ class HPONode(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(description="The HP Identifier (e.g., HP:0002240).")
     lbl: str | None = Field(None, description="Primary human-readable name.")
+    type: str | None = Field(None, description="Type or property type of the node.")
     meta: HPONodeMeta | None = Field(None, description="Metadata for the node.")
 
 
