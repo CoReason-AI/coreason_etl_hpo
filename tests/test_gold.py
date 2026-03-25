@@ -4,6 +4,7 @@ from coreason_etl_hpo.gold import (
     project_bridge_disease_annotation,
     project_dim_hpo_concept,
     project_fact_hpo_relationship,
+    project_obt_hpo_reporting,
 )
 
 
@@ -13,6 +14,9 @@ def test_project_dim_hpo_concept() -> None:
         "hp_id": ["HP:0000001", "HP:0000002", "HP:0000003"],
         "phenotype_name": ["P1", "P2", "P3"],
         "definition": ["D1", "D2", "D3"],
+        "synonym": ["S1", "S2", "S3"],
+        "is_a_parent": [True, False, True],
+        "type": ["CLASS", "CLASS", "PROPERTY"],
         "is_obsolete": [False, True, None],
     }
     df = pl.DataFrame(data)
@@ -21,6 +25,9 @@ def test_project_dim_hpo_concept() -> None:
     assert result.height == 2
     assert result["hp_id"].to_list() == ["HP:0000001", "HP:0000003"]
     assert "is_obsolete" not in result.columns
+    assert "synonym" in result.columns
+    assert "is_a_parent" in result.columns
+    assert "type" in result.columns
 
 
 def test_project_fact_hpo_relationship() -> None:
@@ -46,6 +53,9 @@ def test_project_bridge_disease_annotation() -> None:
         "evidence": ["E1", "E2"],
         "frequency": ["F1", "F2"],
         "aspect": ["A1", "A2"],
+        "reference": ["R1", "R2"],
+        "onset": ["O1", "O2"],
+        "modifier": ["M1", "M2"],
         "hp_id": ["HP:1", "HP:2"],
     }
     df = pl.DataFrame(data)
@@ -54,3 +64,51 @@ def test_project_bridge_disease_annotation() -> None:
     assert result.height == 2
     assert "hp_id" not in result.columns
     assert "disease_id" in result.columns
+    assert "reference" in result.columns
+    assert "onset" in result.columns
+    assert "modifier" in result.columns
+
+
+def test_project_obt_hpo_reporting() -> None:
+    dim_data = {
+        "coreason_id": ["C1", "C2"],
+        "hp_id": ["HP:0000001", "HP:0000002"],
+        "phenotype_name": ["Name1", "Name2"],
+        "definition": ["Def1", "Def2"],
+        "synonym": ["Syn1", "Syn2"],
+        "is_a_parent": [True, False],
+        "type": ["CLASS", "PROPERTY"],
+    }
+    dim_df = pl.DataFrame(dim_data)
+
+    bridge_data = {
+        "coreason_id": ["C1"],
+        "disease_id": ["OMIM:1"],
+        "disease_name": ["D1"],
+        "evidence": ["E1"],
+        "frequency": ["F1"],
+        "aspect": ["A1"],
+        "reference": ["Ref1"],
+        "onset": ["Onset1"],
+        "modifier": ["Mod1"],
+    }
+    bridge_df = pl.DataFrame(bridge_data)
+
+    result = project_obt_hpo_reporting(dim_df, bridge_df)
+
+    assert result.height == 2
+    # Ensure all required OBT columns are present
+    expected_cols = ["name", "definition", "hp_id", "synonym", "is_a_parent", "reference", "onset", "modifier"]
+    for col in expected_cols:
+        assert col in result.columns
+
+    # Check joining logic
+    # C1 should have bridge data
+    row_c1 = result.filter(pl.col("hp_id") == "HP:0000001").row(0, named=True)
+    assert row_c1["name"] == "Name1"
+    assert row_c1["reference"] == "Ref1"
+
+    # C2 should be null for bridge fields
+    row_c2 = result.filter(pl.col("hp_id") == "HP:0000002").row(0, named=True)
+    assert row_c2["name"] == "Name2"
+    assert row_c2["reference"] is None
