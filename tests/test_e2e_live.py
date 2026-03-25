@@ -116,3 +116,8 @@ def test_e2e_pipeline_live(monkeypatch: pytest.MonkeyPatch, mock_dlt_client_get:
     assert bridge_anno.height == 1
     assert bridge_anno["disease_id"].to_list() == ["OMIM:101600"]
     assert bridge_anno["disease_name"].to_list() == ["Disease 1"]
+
+    obt_reporting = pl.read_database("SELECT * FROM hpo_gold.obt_reporting", connection=test_db_uri, engine="adbc")  # type: ignore[call-overload]
+    assert obt_reporting.height == 1
+    assert obt_reporting["name"].to_list() == ["Test Phenotype 1"]
+    assert obt_reporting["disease_name"].to_list() == ["Disease 1"]
