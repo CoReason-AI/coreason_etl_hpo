@@ -44,8 +44,22 @@ def run_pipeline() -> None:
     # Read Bronze tables
     # Note: `engine` is not a valid parameter for `read_database` with `connection` as a URI string.
     # The appropriate engine is dynamically selected based on the URI string provided.
+<<<<<<< HEAD
     bronze_nodes = pl.read_database(
         "SELECT * FROM bronze.coreason_etl_hpo_bronze_nodes", connection=config.postgres_uri
+=======
+    # bronze_nodes = pl.read_database(
+    #    "SELECT * FROM bronze.coreason_etl_hpo_bronze_nodes", connection=config.postgres_uri
+    # )
+    # bronze_edges = pl.read_database(
+    #   "SELECT * FROM bronze.coreason_etl_hpo_bronze_edges", connection=config.postgres_uri
+    # )
+    # bronze_annotations = pl.read_database(
+    #    "SELECT * FROM bronze.coreason_etl_hpo_bronze_annotations", connection=config.postgres_uri
+    # )
+    bronze_nodes = pl.read_database_uri(
+        "SELECT * FROM bronze.coreason_etl_hpo_bronze_nodes", uri=config.postgres_uri, engine="adbc"
+>>>>>>> 68b9210 (validation changes implemented)
     )
     # Check if synonyms table exists before reading to avoid initial run failures where no synonyms exist yet
     try:

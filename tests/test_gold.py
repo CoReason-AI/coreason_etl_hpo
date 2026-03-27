@@ -1,3 +1,5 @@
+# --- tests/test_gold.py ---
+
 import polars as pl
 
 from coreason_etl_hpo.gold import (
@@ -14,9 +16,13 @@ def test_project_dim_hpo_concept() -> None:
         "hp_id": ["HP:0000001", "HP:0000002", "HP:0000003"],
         "phenotype_name": ["P1", "P2", "P3"],
         "definition": ["D1", "D2", "D3"],
+<<<<<<< HEAD
         "synonym": ["S1", "S2", "S3"],
         "is_a_parent": [True, False, True],
         "type": ["CLASS", "CLASS", "PROPERTY"],
+=======
+        "synonyms": [None, '[{"val": "Syn1"}]', None],  # Added synonyms mock data
+>>>>>>> 68b9210 (validation changes implemented)
         "is_obsolete": [False, True, None],
     }
     df = pl.DataFrame(data)
@@ -25,28 +31,36 @@ def test_project_dim_hpo_concept() -> None:
     assert result.height == 2
     assert result["hp_id"].to_list() == ["HP:0000001", "HP:0000003"]
     assert "is_obsolete" not in result.columns
+<<<<<<< HEAD
     assert "synonym" in result.columns
     assert "is_a_parent" in result.columns
     assert "type" in result.columns
+=======
+    assert "synonyms" in result.columns  # Assert new column exists
+>>>>>>> 68b9210 (validation changes implemented)
 
 
 def test_project_fact_hpo_relationship() -> None:
     data = {
+        "relationship_coreason_id": ["r1", "r2"],  # Added new PK
         "source_coreason_id": ["s1", "s2"],
         "target_coreason_id": ["t1", "t2"],
         "source_hp_id": ["HP:001", "HP:002"],
         "target_hp_id": ["HP:003", "HP:004"],
+        "pred": ["is_a", "is_a"],
     }
     df = pl.DataFrame(data)
     result = project_fact_hpo_relationship(df)
 
     assert result.height == 2
-    assert "source_hp_id" not in result.columns
+    assert "relationship_coreason_id" in result.columns
+    assert "source_hp_id" in result.columns  # We now WANT this to be in the columns
     assert "source_coreason_id" in result.columns
 
 
 def test_project_bridge_disease_annotation() -> None:
     data = {
+        "annotation_coreason_id": ["a1", "a2"],  # Added new PK
         "coreason_id": ["id1", "id2"],
         "disease_id": ["OMIM:1", "OMIM:2"],
         "disease_name": ["D1", "D2"],
@@ -62,7 +76,8 @@ def test_project_bridge_disease_annotation() -> None:
     result = project_bridge_disease_annotation(df)
 
     assert result.height == 2
-    assert "hp_id" not in result.columns
+    assert "annotation_coreason_id" in result.columns
+    assert "hp_id" in result.columns  # We now WANT this to be in the columns
     assert "disease_id" in result.columns
     assert "reference" in result.columns
     assert "onset" in result.columns

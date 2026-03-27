@@ -1,3 +1,5 @@
+# --- tests/test_silver.py ---
+
 import polars as pl
 import pytest
 
@@ -31,7 +33,11 @@ def test_transform_silver_nodes_success() -> None:
         "type": ["CLASS", "PROPERTY"],
         "meta__definition__val": ["Root of all terms.", "Abnormality of height."],
         "meta__deprecated": [False, True],
+<<<<<<< HEAD
         "_dlt_id": ["uuid1", "uuid2"],
+=======
+        "meta__synonyms": [None, '[{"val": "Short stature"}]'],  # Add mock synonyms
+>>>>>>> 68b9210 (validation changes implemented)
     }
     df = pl.DataFrame(data)
 
@@ -45,13 +51,18 @@ def test_transform_silver_nodes_success() -> None:
 
     assert result.height == 2
     assert "coreason_id" in result.columns
+    assert "synonyms" in result.columns  # Assert synonyms extracted
     assert result["phenotype_name"].to_list() == ["All", "Abnormality of body height"]
     assert result["hp_id"].to_list() == ["HP:0000001", "HP:0000002"]
     assert result["type"].to_list() == ["CLASS", "PROPERTY"]
     assert result["definition"].to_list() == ["Root of all terms.", "Abnormality of height."]
     assert result["is_obsolete"].to_list() == [False, True]
+<<<<<<< HEAD
     assert result["synonym"].to_list() == ["Syn1|Syn2", "Syn3"]
     assert result["is_a_parent"].to_list() == [True, False]
+=======
+    assert result["synonyms"].to_list() == [None, '[{"val": "Short stature"}]']
+>>>>>>> 68b9210 (validation changes implemented)
 
 
 def test_transform_silver_nodes_invalid_hp_id() -> None:
@@ -128,6 +139,7 @@ def test_transform_silver_edges_success() -> None:
     assert result.height == 2
     assert "source_coreason_id" in result.columns
     assert "target_coreason_id" in result.columns
+    assert "relationship_coreason_id" in result.columns  # Assert new PK
     assert result["source_hp_id"].to_list() == ["HP:0000002", "HP:0000003"]
     assert result["target_hp_id"].to_list() == ["HP:0000001", "HP:0000001"]
 
@@ -166,6 +178,7 @@ def test_transform_silver_annotations_success() -> None:
 
     assert result.height == 2
     assert "coreason_id" in result.columns
+    assert "annotation_coreason_id" in result.columns  # Assert new PK
     assert result["hp_id"].to_list() == ["HP:0011097", "HP:0002187"]
     assert result["disease_id"].to_list() == ["OMIM:619340", "OMIM:619340"]
     assert result["reference"].to_list() == ["PMID:1", "PMID:2"]

@@ -1,5 +1,7 @@
 import polars as pl
 
+# --- src/coreason_etl_hpo/gold.py ---
+
 
 def project_dim_hpo_concept(silver_nodes_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame:
     """
@@ -10,7 +12,12 @@ def project_dim_hpo_concept(silver_nodes_df: pl.LazyFrame | pl.DataFrame) -> pl.
 
     return (
         lazy_df.filter(~pl.col("is_obsolete").fill_null(False))
+<<<<<<< HEAD
         .select(["coreason_id", "hp_id", "phenotype_name", "definition", "synonym", "is_a_parent", "type"])
+=======
+        # ADDED: 'synonyms' to the projection
+        .select(["coreason_id", "hp_id", "phenotype_name", "definition", "synonyms"])
+>>>>>>> 68b9210 (validation changes implemented)
         .collect()
     )
 
@@ -21,7 +28,10 @@ def project_fact_hpo_relationship(silver_edges_df: pl.LazyFrame | pl.DataFrame) 
     """
     lazy_df = silver_edges_df.lazy() if isinstance(silver_edges_df, pl.DataFrame) else silver_edges_df
 
-    return lazy_df.select(["source_coreason_id", "target_coreason_id"]).collect()
+    # ADDED: relationship_coreason_id (PK), source_hp_id, target_hp_id, pred
+    return lazy_df.select(
+        ["relationship_coreason_id", "source_coreason_id", "target_coreason_id", "source_hp_id", "target_hp_id", "pred"]
+    ).collect()
 
 
 def project_bridge_disease_annotation(silver_annotations_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame:
@@ -30,14 +40,24 @@ def project_bridge_disease_annotation(silver_annotations_df: pl.LazyFrame | pl.D
     """
     lazy_df = silver_annotations_df.lazy() if isinstance(silver_annotations_df, pl.DataFrame) else silver_annotations_df
 
+<<<<<<< HEAD
     return lazy_df.select(
         [
             "coreason_id",
+=======
+    # ADDED: annotation_coreason_id (PK) and hp_id (Natural key)
+    return lazy_df.select(
+        [
+            "annotation_coreason_id",
+            "coreason_id",
+            "hp_id",
+>>>>>>> 68b9210 (validation changes implemented)
             "disease_id",
             "disease_name",
             "evidence",
             "frequency",
             "aspect",
+<<<<<<< HEAD
             "reference",
             "onset",
             "modifier",
@@ -73,5 +93,7 @@ def project_obt_hpo_reporting(
             pl.col("reference"),
             pl.col("onset"),
             pl.col("modifier"),
+=======
+>>>>>>> 68b9210 (validation changes implemented)
         ]
     ).collect()

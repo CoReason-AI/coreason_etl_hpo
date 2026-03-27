@@ -1,3 +1,5 @@
+# --- src/coreason_etl_hpo/silver.py ---
+
 import polars as pl
 
 from coreason_etl_hpo.identity import generate_coreason_id
@@ -36,17 +38,6 @@ def transform_silver_nodes(
     """
     lazy_df = bronze_df.lazy() if isinstance(bronze_df, pl.DataFrame) else bronze_df
 
-    # Extract required columns and map them to their silver names.
-    # We use `.struct.field` if nested, but according to bronze ingestion,
-    # native JSON parsing flattens dicts. We will assume columns exist as:
-    # id, lbl, meta.definition.val, meta.deprecated
-    # Note: DLT might unpack nested fields differently based on configuration.
-    # Usually `meta__definition__val`. We need to handle variations.
-
-    # Actually, DLT flattens nested JSON using double underscore by default.
-    # So `meta.definition.val` -> `meta__definition__val`
-    # `meta.deprecated` -> `meta__deprecated`
-
     available_cols = lazy_df.collect_schema().names()
 
     # Determine column names based on potential flattening
@@ -54,19 +45,24 @@ def transform_silver_nodes(
         "meta__definition__val" if "meta__definition__val" in available_cols else "meta_definition_val"
     )
     if def_col not in available_cols:
-        # Fallback if the path is actually different or not present in sample
         def_col = None
 
     dep_col: str | None = "meta__deprecated" if "meta__deprecated" in available_cols else "meta_deprecated"
     if dep_col not in available_cols:
         dep_col = None
 
+<<<<<<< HEAD
     # Determine type column name
     type_col: str | None = "type" if "type" in available_cols else None
+=======
+    # Determine synonym column
+    syn_col: str | None = "meta__synonyms" if "meta__synonyms" in available_cols else "meta_synonyms"
+    if syn_col not in available_cols:
+        syn_col = None
+>>>>>>> 68b9210 (validation changes implemented)
 
     select_exprs = [
-        # Extract HP_1234567 or HP:1234567 and replace the underscore with a colon
-        pl.col("id").str.extract(r"(HP[_:]\d{7})").str.replace("_", ":").alias("hp_id"),
+        pl.col("id").str.extract(r"(HP[_:]\d+)").str.replace("_", ":").alias("hp_id"),
         pl.col("lbl").str.strip_chars().alias("phenotype_name"),
         pl.col("id"),
         pl.col("_dlt_id"),
@@ -86,6 +82,13 @@ def transform_silver_nodes(
         select_exprs.append(pl.col(dep_col).fill_null(False).cast(pl.Boolean).alias("is_obsolete"))
     else:
         select_exprs.append(pl.lit(False).alias("is_obsolete"))
+
+    # Append synonym extraction
+    if syn_col:
+        select_exprs.append(pl.col(syn_col).alias("synonyms"))
+    else:
+        # Fallback to None if not found
+        select_exprs.append(pl.lit(None, dtype=pl.String).alias("synonyms"))
 
     transformed_df = lazy_df.select(select_exprs).with_columns(
         generate_coreason_id(pl.col("hp_id")).alias("coreason_id")
@@ -149,16 +152,26 @@ def transform_silver_edges(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.DataFra
         lazy_df.filter(pl.col("pred").str.contains("is_a|subClassOf"))
         .select(
             [
+<<<<<<< HEAD
                 pl.col("sub").str.extract(r"(HP[_:]\d{7})").str.replace("_", ":").alias("source_hp_id"),
                 pl.col("obj").str.extract(r"(HP[_:]\d{7})").str.replace("_", ":").alias("target_hp_id"),
                 pl.col("sub"),
                 pl.col("obj"),
+=======
+                pl.col("sub").str.extract(r"(HP[_:]\d+)").str.replace("_", ":").alias("source_hp_id"),
+                pl.col("obj").str.extract(r"(HP[_:]\d+)").str.replace("_", ":").alias("target_hp_id"),
+                pl.col("pred"),
+>>>>>>> 68b9210 (validation changes implemented)
             ]
         )
         .with_columns(
             [
                 generate_coreason_id(pl.col("source_hp_id")).alias("source_coreason_id"),
                 generate_coreason_id(pl.col("target_hp_id")).alias("target_coreason_id"),
+                # Composite Primary Key for the relationship
+                generate_coreason_id(
+                    pl.col("source_hp_id") + "_" + pl.col("pred") + "_" + pl.col("target_hp_id")
+                ).alias("relationship_coreason_id"),
             ]
         )
     )
@@ -181,6 +194,7 @@ def transform_silver_annotations(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.D
     """
     lazy_df = bronze_df.lazy() if isinstance(bronze_df, pl.DataFrame) else bronze_df
 
+<<<<<<< HEAD
     # We need to map database_id (e.g., OMIM:619340) and hpo_id (e.g., HP:0011097)
     # The requirement mentions mapping external database identifiers to coreason_id
     # We will generate coreason_id based on hpo_id, and keep database_id
@@ -199,6 +213,28 @@ def transform_silver_annotations(bronze_df: pl.LazyFrame | pl.DataFrame) -> pl.D
             pl.col("hpo_id").alias("_original_hpo_id"),
         ]
     ).with_columns(generate_coreason_id(pl.col("hp_id")).alias("coreason_id"))
+=======
+    transformed_df = (
+        lazy_df.select(
+            [
+                pl.col("hpo_id").str.extract(r"(HP:\d+)").alias("hp_id"),
+                pl.col("database_id").alias("disease_id"),
+                pl.col("disease_name"),
+                pl.col("evidence"),
+                pl.col("frequency"),
+                pl.col("aspect"),
+            ]
+        )
+        .filter(pl.col("hp_id").is_not_null())
+        .with_columns(
+            [
+                generate_coreason_id(pl.col("hp_id")).alias("coreason_id"),
+                # Composite Primary Key for the annotation
+                generate_coreason_id(pl.col("disease_id") + "_" + pl.col("hp_id")).alias("annotation_coreason_id"),
+            ]
+        )
+    )
+>>>>>>> 68b9210 (validation changes implemented)
 
     result_df = transformed_df.collect()
 
