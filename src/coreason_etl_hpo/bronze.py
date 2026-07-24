@@ -17,13 +17,25 @@ class HPONodeMetaDefinition(BaseModel):
     val: str = Field(description="Description of the phenotype.")
 
 
+class HPONodeMetaSynonym(BaseModel):
+    """Data contract for a synonym object within an HPO node."""
+
+    model_config = ConfigDict(extra="ignore")
+    val: str = Field(description="The synonym string value.")
+    pred: str | None = Field(None, description="The predicate type of the synonym.")
+
+
 class HPONodeMeta(BaseModel):
     """Data contract for the meta data of an HPO node."""
 
     model_config = ConfigDict(extra="ignore")
     definition: HPONodeMetaDefinition | None = Field(None, description="Definition of the node.")
     deprecated: bool | None = Field(None, description="True if the node is deprecated.")
+<<<<<<< HEAD
     synonyms: list[Any] | None = Field(None, description="List of synonyms for the node.")
+=======
+    synonyms: list[HPONodeMetaSynonym] | None = Field(None, description="Synonyms for the node.")
+>>>>>>> 68b9210 (validation changes implemented)
 
 
 class HPONode(BaseModel):

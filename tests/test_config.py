@@ -7,7 +7,7 @@ from coreason_etl_hpo.config import PipelineConfig
 def test_pipeline_config_defaults() -> None:
     # Test default values without any environment variables
     with mock.patch.dict(os.environ, clear=True):
-        config = PipelineConfig()
+        config = PipelineConfig(_env_file=None) # ADDED: _env_file=None
         assert config.pghost == "localhost"
         assert config.pgport == 5432
         assert config.pguser == "postgres"
@@ -15,7 +15,6 @@ def test_pipeline_config_defaults() -> None:
         assert config.pgdatabase == "coreason"
         assert config.app_env == "development"
         assert config.postgres_uri == "postgresql://postgres:postgres@localhost:5432/coreason"
-
 
 def test_pipeline_config_env_override() -> None:
     # Test overriding defaults with environment variables
